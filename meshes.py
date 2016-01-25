@@ -4,6 +4,7 @@
 import meshpy.triangle as triangle
 import numpy as np
 import numpy.linalg as la
+from scipy.sparse import lil_matrix
 
 
 #
@@ -194,4 +195,104 @@ def circle(r,h0,n):
     return bool(max_edge_length(vertices) > h0)
   mesh = triangle.build(info, refinement_func=needs_refinement)
   return (np.array(mesh.points), np.array(mesh.elements))
+
+
+import scipy.sparse as sparse
+
+def edgeIndexmy(p,t):
+  """
+  collects indices of edges, builds a mapping from node indices to edge
+  indices and identifies the boundary nodes and edges within a mesh
+
+  input:
+   p - Nx2-array of nodal coordinates
+   t - Mx3-array of triangles as indices into p, defined with a 
+       counter-clockwise node ordering
+
+  output:
+   e             - Ex2-array of edge node correspondence
+   eIndex        - NxN-sparse matrix of all node combinations as indices
+                   into e
+   boundaryNodes - vector of all node indices that lie on the boundary
+   boundaryEdges - vector of all edge indices that lie on the boundary
+  """
+
+  
+  # initialize sparse matrices for edge indices and edge appearance
+  eIndex  = lil_matrix((p.shape[0],p.shape[0]), dtype=np.int);
+  eAppear = lil_matrix((p.shape[0],p.shape[0]), dtype=np.int);
+
+  # indices of the nodes of all edges of a triangle
+  elementEdge = np.matrix([[0,1],[1,2],[2,0]]);
+
+  # edge index
+  edgeIndex = 0;
+
+  # initialize edge2node matrix e with maximum length
+  e = np.zeros((3*t.shape[0],2), dtype=np.int);
+
+  # loop through all triangles
+  for i in range(t.shape[0]):
+    # loop trough all edges of the triangle
+    for j in range(3):
+      # read nodes of edge in ascending order
+      node1 = np.min(t[i,elementEdge[j,:]]);
+      node2 = np.max(t[i,elementEdge[j,:]]);
+       
+      # write appearance matrix (where only upper triangular matrix has
+      # entries)
+      eAppear[node1,node2] += 1;
+      
+      # write edge index matrix and edge2node matrix
+      if (eAppear[node1,node2] == 1):
+        eIndex[node1,node2] = edgeIndex;
+        eIndex[node2,node1] = edgeIndex;
+        e[edgeIndex,0] = node1;
+        e[edgeIndex,1] = node2;
+        edgeIndex += 1;
+
+  # delete empty rows of e
+  e = e[0:edgeIndex-1,:];
+
+  # find boundary nodes and edges
+  [beRow,beCol] = np.nonzero(eAppear==1);
+  boundaryNodes = np.unique([beRow,beCol]);
+  dense_vector = np.zeros((beRow.shape[0],beRow.shape[0]), dtype=np.int)
+  for i in range(beRow.shape[0]):
+    dense_vector[i,i] = eIndex[beRow[i],beCol[i]]
+  boundaryEdges = np.unique(dense_vector)
+  #print dense_vector
+  
+  return (e, eIndex, boundaryNodes, boundaryEdges)
+
+def edgeIndex(p,t): # from Burg
+    n =  len(p)
+    E  = lil_matrix((p.shape[0],p.shape[0]), dtype=np.int);
+    #E =  np.zeros([n,n])
+    m = 1
+    for j in range(len(t)):
+        if E[t[j,0],t[j,1]]==0 and E[t[j,1],t[j,0]]==0:
+            E[t[j,0],t[j,1]]=m
+            E[t[j,1],t[j,0]]=m
+            m=m+1
+        
+        if E[t[j,1],t[j,2]]==0 and E[t[j,2],t[j,1]]==0:
+            E[t[j,1],t[j,2]]=m
+            E[t[j,2],t[j,1]]=m
+            m=m+1
+       
+        if E[t[j,0],t[j,2]]==0 and E[t[j,2],t[j,0]]==0:
+            E[t[j,0],t[j,2]]=m
+            E[t[j,2],t[j,0]]=m
+            m=m+1
     
+        
+        
+   # for k in range(0, n):
+    #    tri = t[k,:]
+     #   for i in range(1,tri.size+1):
+      #      index = i % 3
+       #     pi1 = tri[0,index-1]
+        #    pi2 = tri[0,index]
+         #   E[pi1, pi2] = edges[0,index-1]
+    return E   

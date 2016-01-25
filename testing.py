@@ -22,7 +22,8 @@ f   = lambda x, y: (1.0 + 8.0*(pi**2))*sol(x,y);
 [p,t]=msh.square(1,h0)
 
 
-[e, eIndex, boundaryNodes, boundaryEdges] = msh.edgeIndex(p,t)
+#[e, eIndex, boundaryNodes, boundaryEdges] = msh.edgeIndex(p,t)
+eIndex = msh.edgeIndex(p,t)
 N = p.shape[0];
 
 # Computing the discretized system:

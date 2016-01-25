@@ -1,6 +1,6 @@
 
 boxdim = 1;
-gridsize = 0.05;
+gridsize = 0.03149802624737182;
 Point(1) = {0.0,0.0,0.0,gridsize};
 Point(2) = {boxdim,0.0,0.0,gridsize};
 Point(3) = {boxdim,boxdim,0.0,gridsize};
