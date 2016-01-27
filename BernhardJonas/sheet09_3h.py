@@ -80,7 +80,8 @@ for i in range(0,Nspacings):
   en_lin = m.sqrt(lu-lun_lin); 		# energy norm of error vector
   discret_err_lin[i] = en_lin;
   # QUADRATIC FINITE ELEMENTS
-  lun_quad = np.dot(u[0:N],F_quad[0:N]);		# value of l(u_n)
+  #lun_quad = np.dot(u[0:N],F_quad[0:N]);		# value of l(u_n)
+  lun_quad = np.dot(u,F_quad);                # value of l(u_n)
   en_quad = m.sqrt(abs(lu-lun_quad)); 	# energy norm of error vector  -> HERE SOMETHING GOES TERRIBLY WRONG!!!!
   discret_err_quad[i] = en_quad;
 

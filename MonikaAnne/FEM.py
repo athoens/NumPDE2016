@@ -109,8 +109,10 @@ def elemStiffness(p):
 
 def elemStiffnessP2(p):
     AK=sp.lil_matrix((6,6)) 
+    
     det=abs((p[1,0]-p[0,0])*(p[2,1]-p[0,1])-(p[1,1]-p[0,1])*(p[2,0]-p[0,0]))
-    K=det/2
+    K = det/2
+    
     DK=sp.lil_matrix((2,3))
     GK=sp.lil_matrix((3,3)) 
     DK[0,0]=(p[1,1]-p[2,1])
@@ -119,8 +121,12 @@ def elemStiffnessP2(p):
     DK[1,0]=(p[2,0]-p[1,0])
     DK[1,1]=(p[0,0]-p[2,0])
     DK[1,2]=(p[1,0]-p[0,0])
-    GK=1/(4*K**2)*DK.transpose()*DK #upper left quarter of new stiffness matrix remains almost the same except for adding K^2
-    grad1=1/(2*K)*np.array([(p[2,1]-p[0,1]),(p[0,0]-p[2,0])])
+    
+    #GK=1/(4*K**2)*DK.transpose()*DK #upper left quarter of new stiffness matrix remains almost the same except for adding K^2
+    GK = 1/(4*K)*DK.transpose()*DK; 
+    diagGk = np.diag(GK);
+    
+    grad1 = 1/(2*K)*np.array([(p[2,1]-p[0,1]),(p[0,0]-p[2,0])])
     grad2=1/(2*K)*np.array([(p[0,1]-p[1,1]),(p[1,0]-p[0,0])])
     grad3=1/(2*K)*np.array([(p[1,1]-p[2,1]),(p[2,0]-p[1,0])]) #gradients of the bubblefunctions
     M1=sp.lil_matrix([[1/6*np.inner(grad1,(grad2+grad3)),1/6*np.inner(grad1,(grad3+grad1)),1/6*np.inner(grad1,(grad1+grad2))],
@@ -129,11 +135,60 @@ def elemStiffnessP2(p):
     M2=sp.lil_matrix([[1/12*np.inner(grad1+grad3,grad1+grad3),1/12*(np.inner(grad1,grad2)+1/2*np.inner(grad3,grad3)),1/12*(np.inner(grad1,grad3)+1/2*np.inner(grad2,grad2))],
         [1/12*((np.inner(grad1,grad2))+1/2*np.inner(grad3,grad3)),1/12*np.inner(grad1+grad3,grad1+grad3),1/12*(np.inner(grad2,grad3)+1/2*np.inner(grad1,grad1))],
         [1/12*(np.inner(grad1,grad3)+1/2*np.inner(grad2,grad2)),1/12*(np.inner(grad2,grad3)+1/2*np.inner(grad1,grad1)),1/12*np.inner(grad1+grad2,grad1+grad2)]])
+    
+    T1 = np.ones((3,3))-np.identity(3);
+    M1 = (1./3.) * GK *T1; #np.dot(GK, T1);
+    M2 = (1./12.) * (T1.transpose() * GK * T1 + GK - np.diag(diagGk) +
+                      np.diag(T2 * diagGk) + 
+                      np.diag(T2*T2*diagGk));
+    
     #calculation of the lower right quarter 
     Q1= sp.hstack([GK,M1])
     Q2= sp.hstack([M1,M2])
     AK=sp.vstack([Q1,Q2]) #assembling the complete stiffnessmatrix
     return AK
+
+
+def elemStiffnessP2my(p):
+  """ computes the element stiffness matrix related to the bilinear
+  form
+    a_K(u,v) = int_K grad u . grad v dx
+  for quadratic FEM on triangles.
+  input:
+    p - 3x2-matrix of the coordinates of the triangle nodes
+  output:
+    AK - 6x6 element stiffness matrix """
+  
+  # vertices of the triangle
+  P0 = p[0,:];
+  P1 = p[1,:];
+  P2 = p[2,:];
+ 
+  # Jacobian of the element map and its determinant
+  Fk = np.c_[P1-P0,P2-P0];
+  detFk = np.linalg.det(Fk); # = 2*|K|
+
+  # coordinate difference matrix
+  Dk = np.array([[ P1[1]-P2[1], P2[1]-P0[1], P0[1]-P1[1] ],
+                 [ P2[0]-P1[0], P0[0]-P2[0], P1[0]-P0[0] ]]);
+
+  # gradient matrix multiplied with |K|
+  Gk = (0.5/detFk) * np.dot(Dk.T,Dk);
+  diagGk = np.diag(Gk);
+  
+  # "transformation" matrices
+  T1 = np.ones((3,3),dtype=np.float)-np.identity(3);
+  T2 = np.array([[0,0,1],[1,0,0],[0,1,0]]);
+
+  # element stiffness matrix
+  AKside = (1./3.) * np.dot(Gk, T1);
+  block = (1./12.) * (np.dot(np.dot(T1.T,Gk), T1) + Gk - np.diag(diagGk) +
+                      np.diag(np.dot(T2,diagGk)) + 
+                      np.diag(np.dot(np.dot(T2,T2),diagGk)));
+  AK = np.vstack((np.hstack((Gk, AKside)), np.hstack((AKside.T, block))));
+
+  return AK.tolil()
+
 
 def elemMass(p):
     det=(p[1,0]-p[0,0])*(p[2,1]-p[0,1])-(p[1,1]-p[0,1])*(p[2,0]-p[0,0])
@@ -231,7 +286,7 @@ def stiffnessP2(p,t,e,l):
                 g=e[t[i,(j+1)%3],t[i,j]]
             Tk[j,t[i,j]]=1
             Tk[j+3,g+len(p)-1]=1    #adding 3 further rows for the edges
-        AK=AK+Tk.transpose()*elemStiffnessP2(v)*Tk
+        AK=AK+Tk.transpose()*elemStiffnessP2my(v)*Tk
     return AK
 
 def mass(p,t):

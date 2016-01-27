@@ -98,6 +98,26 @@ def grid_square(a,h0):
 		be[3*(wN-1)+j,1]=(j+1)*wN
 	
 	return (p,t,be)
+      
+      
+def grid_square_my(a,h0):
+  n=int(np.ceil(np.sqrt(2.0)*a/h0))
+  p=np.zeros(((n+1)*(n+1),2))
+  t=np.zeros((2*n*n,3),dtype=int)
+  for i in range(0,n+1):
+    for j in range(0,n+1):
+      p[i*(n+1)+j,0] = i*a/float(n)
+      p[i*(n+1)+j,1] = j*a/float(n)
+  for i in range(0,n):
+    for j in range(0,n):
+      t[i*n+j,0]=i*(n+1)+j
+      t[i*n+j,1]=i*(n+1)+j+1
+      t[i*n+j,2]=(i+1)*(n+1)+j+1
+      t[i*n+j+n*n,0]=i*(n+1)+j
+      t[i*n+j+n*n,1]=(i+1)*(n+1)+j+1
+      t[i*n+j+n*n,2]=(i+1)*(n+1)+j
+  return (p, t)
+
 def show(p,t):
 	M=len(t)
 	N=len(p)
@@ -119,6 +139,8 @@ def show(p,t):
 		ax.add_line(l3)
 	plt.axes().set_aspect('equal', 'datalim')
 	plt.show()
+
+
 
 #g
 def max_mesh_width(p,t):
@@ -158,3 +180,26 @@ def edgeIndex(p,t):
 			E[t[i,2],t[i,0]]=j
 			j=j+1
 	return E,(j-1) #return matrix and number of edges
+      
+def edgeIndex_my(p,t): 
+    n =  len(p)
+    E  = sp.lil_matrix((p.shape[0],p.shape[0]), dtype=np.int);
+    #E =  np.zeros([n,n])
+    m = 1
+    for j in range(len(t)):
+        if E[t[j,0],t[j,1]]==0 and E[t[j,1],t[j,0]]==0:
+            E[t[j,0],t[j,1]]=m
+            E[t[j,1],t[j,0]]=m
+            m=m+1
+        
+        if E[t[j,1],t[j,2]]==0 and E[t[j,2],t[j,1]]==0:
+            E[t[j,1],t[j,2]]=m
+            E[t[j,2],t[j,1]]=m
+            m=m+1
+       
+        if E[t[j,0],t[j,2]]==0 and E[t[j,2],t[j,0]]==0:
+            E[t[j,0],t[j,2]]=m
+            E[t[j,2],t[j,0]]=m
+            m=m+1
+    
+    return E, m-1  

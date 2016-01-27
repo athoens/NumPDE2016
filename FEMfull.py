@@ -127,7 +127,7 @@ def elemStiffness(p):
   return Ak;
 
 
-def elemStiffnessP2(p):
+def elemStiffnessP2my(p):
   """ computes the element stiffness matrix related to the bilinear
   form
     a_K(u,v) = int_K grad u . grad v dx
@@ -167,6 +167,45 @@ def elemStiffnessP2(p):
 
   return AK
 
+def elemStiffnessP2(p):
+    
+   D=np.zeros((2,3))    #Initialisieren der D-Matrix aus der Uebung.     
+   D[0,0]=p[1,1]-p[2,1]
+   D[0,1]=p[2,1]-p[0,1]
+   D[0,2]=p[0,1]-p[1,1]
+   D[1,0]=p[2,0]-p[1,0]
+   D[1,1]=p[0,0]-p[2,0]
+   D[1,2]=p[1,0]-p[0,0]
+   
+   F=np.ones((3,3))
+   F[0:3,1:3]=p 
+   Area=m.fabs(la.det(F))*0.5
+   G=(1/(Area*Area))*0.25*D.transpose().dot(D)
+   
+   AK=np.zeros((6,6))
+   AK[0:3,0:3]=G*Area
+   for j in range(3):
+        AK[j,3]=(G[j,1]+G[j,2])*Area*(1/3)
+        AK[j,4]=(G[j,0]+G[j,2])*Area*(1/3)
+        AK[j,5]=(G[j,0]+G[j,1])*Area*(1/3)
+        
+     
+   AK[3:6,0:3]=AK[0:3,3:6].transpose()   
+  
+   AK[3,3]=(G[1,1]+G[2,2]+G[2,1])*Area*(1/6)
+   AK[4,4]=(G[0,0]+G[2,2]+G[0,2])*Area*(1/6)
+   AK[5,5]=(G[0,0]+G[1,1]+G[0,1])*Area*(1/6) 
+   
+   AK[3,4]=(G[0,1]+G[0,2]+G[1,2]   )*Area*(1/12)+G[2,2]*Area*(1/6)
+   AK[4,3]=AK[3,4]
+   
+   AK[3,5]=(G[0,1]+G[0,2]+G[1,2])*Area*(1/12)+G[1,1]*Area*(1/6)
+   AK[5,3]=AK[3,5]
+   
+   AK[4,5]=(G[0,1]+G[2,1]+G[2,0] )*Area*(1/12)+G[0,0]*Area*(1/6)
+   AK[5,4]=AK[4,5]
+
+   return AK
 
 # 
 # elemMass
@@ -205,7 +244,7 @@ def elemMass(p):
 # output:
 # Mk - 6x6 element mass matrix
 #
-def elemMassP2(p):
+def elemMassP2my(p):
   # vertices of the triangle
   P0 = p[0,:];
   P1 = p[1,:];
@@ -224,7 +263,35 @@ def elemMassP2(p):
   
   return Mk;
 
+def elemMassP2(p):
+    
+  MK=np.zeros((6,6))
 
+  F=np.ones((3,3))
+  F[0:3,1:3]=p 
+  Area=m.fabs(la.det(F))*0.5
+
+  K=np.ones((3,3))*(1.0/12.0)    
+  K=K+np.eye(3)*(1.0/12.0)
+  K=K*Area
+
+  MK[0:3,0:3]=K
+   
+  K=np.ones((3,3))*(1.0/180.0)
+  K=K+np.eye(3)*(1.0/180.0)
+  K=K*Area
+
+  MK[3:6,3:6]=K    
+
+
+  K=np.ones((3,3))*(1.0/30.0)
+  K=K-np.eye(3)*(1.0/60.0)
+  K=K*Area 
+
+  MK[0:3,3:6]=K
+  MK[3:6,0:3]=K.transpose()
+
+  return MK
 # 
 # elemLoad
 #
@@ -271,8 +338,6 @@ def elemLoad(p,n,f):
   return phi;
 
 
-import math as m
-
 # 
 # elemLoadP2
 #
@@ -286,8 +351,102 @@ import math as m
 # output:
 # phi - element load vector (6x1-matrix)
 #
+def elemLoadP2Duffy(p,n,f):
 
-def elemLoadP2(p,n,f): 
+  # read quadrature points
+  eta, w = gaussTriangle(n);
+  eta = (np.asarray(eta) + 1.0)/2.0;
+  w = np.asarray(w)/4.0;
+
+  # number of quadrature points
+  k = np.size(w);
+
+  # vertices of the triangle
+  P0 = p[0,:];
+  P1 = p[1,:];
+  P2 = p[2,:];
+
+  # Jacobian of the element map and its determinant
+  Fk = np.c_[P1-P0,P2-P0];
+  detFk = np.linalg.det(Fk);
+
+  # barycentric coordinates
+  lambda1 = lambda x: ((1.0/detFk) * np.dot(x-P1,[P1(1)-P2(1),P2(0)-P1(0)]));
+  lambda2 = lambda x: ((1.0/detFk) * np.dot(x-P2,[P2(1)-P0(1),P0(0)-P2(0)]));
+  lambda3 = lambda x: ((1.0/detFk) * np.dot(x-P0,[P0(1)-P1(1),P1(0)-P0(0)]));
+
+  # shape functions
+  N0 = lambda x: lambda1(x);
+  N1 = lambda x: lambda2(x);
+  N2 = lambda x: lambda3(x);
+  N3 = lambda x: lambda2(x)*lambda3(x);
+  N4 = lambda x: lambda1(x)*lambda3(x);
+  N5 = lambda x: lambda1(x)*lambda2(x);
+  """
+  # numerical integration
+  phi = np.zeros((6));
+  for i in range(n):
+    for j in range(n):
+      # Duffy transformation
+      xi = [np.dot(eta[i,:]*(1.0-np.asarray(eta[j,:]))); eta[j,:]];
+      # element map
+      x = P0 + np.dot(Fk,xi);
+      # Jacobian of the Duffy transformation
+      detD = 1 - eta(j);
+      # integrate
+      phi(1) = phi(1) + (1/4) * detFk * detD * w(i) * w(j) * f(x) * N0(x);
+      phi(2) = phi(2) + (1/4) * detFk * detD * w(i) * w(j) * f(x) * N1(x);
+      phi(3) = phi(3) + (1/4) * detFk * detD * w(i) * w(j) * f(x) * N2(x);
+      phi(4) = phi(4) + (1/4) * detFk * detD * w(i) * w(j) * f(x) * N3(x);
+      phi(5) = phi(5) + (1/4) * detFk * detD * w(i) * w(j) * f(x) * N4(x);
+      phi(6) = phi(6) + (1/4) * detFk * detD * w(i) * w(j) * f(x) * N5(x);
+  y = P0 + np.dot(Fk,x[i,:]);
+      phi[0] = phi[0] + detFk * w[i] * f(y[0],y[1]) * (1-x[i,0]-x[i,1]);
+      phi[1] = phi[1] + detFk * w[i] * f(y[0],y[1]) * x[i,0];
+      phi[2] = phi[2] + detFk * w[i] * f(y[0],y[1]) * x[i,1];
+  """
+
+def elemLoadP2BnJ(p, n, f): # from Bernhard and Jonas
+   
+   FK = [[p[1][0] - p[0][0], p[2][0] - p[0][0]],
+         [p[1][1] - p[0][1], p[2][1] - p[0][1]]];	# transformation matrix
+   detFK = FK[0][0]*FK[1][1] - FK[0][1]*FK[1][0];	# computing the determinant
+   detFK = abs(detFK);					# functional determinant
+   
+   # Transformation to reference triangle
+   f_ref = lambda x, y: f(FK[0][0]*x + FK[0][1]*y + p[0][0], FK[1][0]*x + FK[1][1]*y + p[0][1]);
+   
+   # Integrands corresponding to linear shape functions
+   l1 = lambda x, y: f_ref(x,y)*(1 - x - y);		# integrand 1
+   l2 = lambda x, y: f_ref(x,y)*x;			# integrand 2
+   l3 = lambda x, y: f_ref(x,y)*y;			# integrand 3
+   
+   # Integrands corresponding to quadratic shape functions
+   q1 = lambda x, y: f_ref(x,y)*x*y;			# integrand 1
+   q2 = lambda x, y: f_ref(x,y)*(1 - x - y)*y;		# integrand 2
+   q3 = lambda x, y: f_ref(x,y)*(1 - x - y)*x;		# integrand 3
+   
+   # Defining the element load vector
+   fK = np.zeros((6,1));	# allocation
+   x, w = gaussTriangle(n);	# points and weights for numerical quadrature
+   w = np.array(w);
+   steps = np.shape(w)[0];	# number of weights
+   # numerical quadrature
+   for i in range(0, steps):
+      # integrands corresponding to linear shape functions
+      fK[0][0] += 0.25*detFK*w[i]*l1((x[i][0] + 1)/2, (x[i][1] + 1)/2);
+      fK[1][0] += 0.25*detFK*w[i]*l2((x[i][0] + 1)/2, (x[i][1] + 1)/2);
+      fK[2][0] += 0.25*detFK*w[i]*l3((x[i][0] + 1)/2, (x[i][1] + 1)/2);
+      # integrands corresponding to quadratic shape functions
+      fK[3][0] += 0.25*detFK*w[i]*q1((x[i][0] + 1)/2, (x[i][1] + 1)/2);
+      fK[4][0] += 0.25*detFK*w[i]*q2((x[i][0] + 1)/2, (x[i][1] + 1)/2);
+      fK[5][0] += 0.25*detFK*w[i]*q3((x[i][0] + 1)/2, (x[i][1] + 1)/2);
+   
+   return fK
+
+import math as m
+
+def elemLoadP2(p,n,f): # from BurgRepinHennig
    fK=np.zeros((6,1))
    F=p[1:3,0:2].transpose()                       
    F[0:2,0:1]=F[0:2,0:1]-p[0:1,0:2].transpose()  # Erstellen der Transformationsmatrix 
@@ -359,7 +518,6 @@ def stiffness(p,t):
   def bf(x):
     return elemStiffness(x);
   return assembleMatrix(p,t,bf);
-
   
 # 
 # stiffnessP2
@@ -393,7 +551,7 @@ def stiffnessP2(p,t,eIndex):
     b_index = np.hstack((t[i,:],[N+eIndex[t[i,1],t[i,2]]-1,
                                  N+eIndex[t[i,2],t[i,0]]-1,
                                  N+eIndex[t[i,0],t[i,1]]-1]));
-    AK = elemStiffnessP2(p[t[i,:],:]);
+    AK = elemStiffnessP2my(p[t[i,:],:]);
     k = 0;
     for j in (b_index):
       m = 0;
@@ -527,7 +685,7 @@ def load(p,t,qo,f):
 # output:
 # b - (N+E)x1 vector
 #
-def loadP2(p, t, eIndex, f, n):
+def loadP2my(p, t, eIndex, f, n):
 
   # number of nodes
   N = p.shape[0]; 
@@ -547,6 +705,55 @@ def loadP2(p, t, eIndex, f, n):
       b[j] += Fk[m];
       m +=1;
   return b
+
+#
+# createTK(p,t)
+#
+# returns the T matrix related to the triangle that is given by t.
+#
+# input:
+# p - Nx2 array with coordinates of the nodes
+# t - 1x3 array with indices of nodes of a triangle 
+#
+# output:
+# TK - T matrix that helps to assemble the global stiffness and mass matrix
+#
+
+def createTK(p, t):
+  
+  TK=lil_matrix((3,p.shape[0]))
+  #print "size of t ", t.size
+  #print "TK size=", TK.size, "coordinates ", t[0,0], t[0,1], t[0,2]
+  TK[0,t[0]]=1
+  TK[1,t[1]]=1
+  TK[2,t[2]]=1
+
+  return TK	
+
+def createTKP2(p,t,E): # from Burg
+   N=p.shape[0]
+   M=np.int((E.tocsr()).max())
+   TK=lil_matrix((6,N+M))
+   TK[0:3,0:N]=createTK(p,t)
+   TK[3,E[t[1],t[2]]+N-1]=1
+   TK[4,E[t[0],t[2]]+N-1]=1
+   TK[5,E[t[0],t[1]]+N-1]=1
+   #TK[5,E[t[0',0],t[0,2]]]=1
+   
+   return TK	
+
+def loadP2(p,t,E,f,n):
+      
+  N=p.shape[0]
+  M=np.int((E.tocsr()).max())
+  Load=np.zeros((N+M,1))
+  for j in range(t.shape[0]):
+    TK=createTKP2(p,t[j,0:3],E)
+    pK=TK[0:3,0:N].dot(p)
+    lK=elemLoadP2(pK,n,f)
+    Load=Load+TK.transpose().dot(lK)
+
+  return Load
 
 
 # 

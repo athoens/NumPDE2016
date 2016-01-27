@@ -338,6 +338,41 @@ def edgeIndex(p,t):
     
   return e
 
+###############################################################################
+#
+# edgeIndex(t) from BurgReppinHenning
+#
+# returns the edge index matrix.
+#
+# input:
+# t - Mx3 array with indices of nodes of the triangles
+#
+# output:
+# E - nxn matrix of edges that connect node n1 and n2
+# the boundary
+#    
+def edgeIndexBurg(p,t):
+  n =  len(p)
+  E =  sp.lil_matrix((n, n), dtype=np.int_);
+  m = 1
+  for j in range(len(t)):
+     if E[t[j,0],t[j,1]]==0 and E[t[j,1],t[j,0]]==0:
+        E[t[j,0],t[j,1]]=m
+        E[t[j,1],t[j,0]]=m
+        m=m+1
+      
+     if E[t[j,1],t[j,2]]==0 and E[t[j,2],t[j,1]]==0:
+        E[t[j,1],t[j,2]]=m
+        E[t[j,2],t[j,1]]=m
+        m=m+1
+      
+     if E[t[j,0],t[j,2]]==0 and E[t[j,2],t[j,0]]==0:
+        E[t[j,0],t[j,2]]=m
+        E[t[j,2],t[j,0]]=m
+        m=m+1
+
+  return E
+
 
 # ------------------- USEFULL INFROMATION FROM THE GMSH DOCUMENTATION -----------------------------
 # File format explained

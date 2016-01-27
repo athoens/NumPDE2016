@@ -325,6 +325,36 @@ def elemLoadP2(p, n, f):
    
    return fK
 
+def elemLoadP2Burg(p,n,f): 
+   fK=np.zeros((6,1))
+   F=p[1:3,0:2].transpose()                       
+   F[0:2,0:1]=F[0:2,0:1]-p[0:1,0:2].transpose()  # Erstellen der Transformationsmatrix 
+   F[0:2,1:2]=F[0:2,1:2]-p[0:1,0:2].transpose()
+   x,w=gaussTriangle(n)
+   Area=m.fabs(la.det(F))*0.5
+
+   for j in range(len(x)):
+     b=x[j]
+     b[0]=(b[0]+1)/2            # Transformation der Stuetzstellen auf Referenzdreieck
+     b[1]=(b[1]+1)/2
+     bf=np.dot(F,b)+p[0:1,0:2]  # Stuetzstellen nach Transformation auf urspruengliches Dreieck, notwendig fuer f
+     
+     fK[0]=fK[0]+w[j]*f(bf[0,0],bf[0,1])*(1-b[0]-b[1])   # Aufsummieren der einzelnen Stuetzstellen mal Gewichte
+     
+     fK[1]=fK[1]+w[j]*f(bf[0,0],bf[0,1])*(b[0])
+
+     fK[2]=fK[2]+w[j]*f(bf[0,0],bf[0,1])*(b[1])
+     
+     fK[3]=fK[3]+w[j]*f(bf[0,0],bf[0,1])*(b[0])*(b[1])
+     
+     fK[4]=fK[4]+w[j]*f(bf[0,0],bf[0,1])*(b[1])*(1-b[0]-b[1])
+     
+     fK[5]=fK[5]+w[j]*f(bf[0,0],bf[0,1])*(1-b[0]-b[1])*(b[0])
+     
+
+   fK=fK*Area*0.5     # Berechnen des Element Load Vectors.
+   return fK  
+   
 
 # elemLoadNeumann(p, n, g)
 # 
