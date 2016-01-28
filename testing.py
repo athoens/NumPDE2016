@@ -17,6 +17,13 @@ sol = lambda x, y: cos(2.0*pi*x)*cos(2.0*pi*y);
 lu = (1 + 8*(pi**2))/4;                               # value of l(sol)
 f   = lambda x, y: (1.0 + 8.0*(pi**2))*sol(x,y);
 
+
+[p,t,be, bd]=msh.create_msh("bgmesh0")
+
+quit()
+
+
+
 Nspacings = 6;                  # number of mesh widths to test (in powers of sqrt(2))           -> CHANGE BACK TO 10!!!!
 h0 = 0.3;                       # maximum value of mesh width
 h = [None]*Nspacings;           # vector for mesh widths (set values)

@@ -5,6 +5,39 @@ import meshpy.triangle as triangle
 import numpy as np
 import numpy.linalg as la
 from scipy.sparse import lil_matrix
+import meshpy.gmsh_reader as reader
+import os
+
+# load a .msh file
+def read_gmsh(fname):
+    # create a receiver from the GmshMeshReceiverBase interface
+    rc = reader.GmshMeshReceiverNumPy()
+    # read the mesh from fname file
+    rd = reader.read_gmsh(rc, fname)
+
+    # points
+    p = np.array(list(map(lambda x: x[0:2], rc.points)))
+
+    # 3 indicies of verticies
+    t = np.array(list(filter(lambda x: x.shape == (3,), rc.elements)))
+
+    # 2 boundary edge indicies
+    be = np.array(list(filter(lambda x: x.shape == (2,), rc.elements)))
+    
+    print np.dot((rc.element_markers == 20*np.ones(len(rc.element_markers),dtype=int)),(rc.elements))
+    bd = 0
+    # Dirichlet boundary edge indicies
+    #bd = np.array(list(filter(lambda x: x.element_markers == 20, rc.elements)))
+
+    return (p, t, be, bd)
+
+
+def create_msh(fname):
+    l = "gmsh -2 square.geo -bgm " + fname + ".pos -o " + fname + ".msh"
+    print l
+    os.system(l)
+    return read_gmsh(fname+".msh")
+
 
 
 #
@@ -233,3 +266,5 @@ def edgeIndex(p,t):
             m=m+1
     
     return E   
+
+
