@@ -24,11 +24,12 @@ def read_gmsh(fname):
     # 2 boundary edge indicies
     be = np.array(list(filter(lambda x: x.shape == (2,), rc.elements)))
     
-    print np.dot((rc.element_markers == 20*np.ones(len(rc.element_markers),dtype=int)),(rc.elements))
-    bd = 0
     # Dirichlet boundary edge indicies
-    #bd = np.array(list(filter(lambda x: x.element_markers == 20, rc.elements)))
-
+    # find indicies for atributes
+    I0 = np.nonzero(np.array(list(rc.element_markers)) == 20);
+    bd = np.array(list(rc.elements))[I0[0]]
+    #print list(rc.elements)
+    
     return (p, t, be, bd)
 
 

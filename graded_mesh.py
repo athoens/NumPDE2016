@@ -51,6 +51,7 @@ def createbgMesh(filename, intervX, intervY, meshwidth, N=25):
       l.append(str(x[i+1]) + ', ' + str(y[j]) + ', 0, ');
       l.append(str(x[i+1]) + ', ' + str(y[j+1]) + ', 0)');
       l.append('{' + str(H[j][i]) + ', ' + str(H[j][i+1]) + ', ' + str(H[j+1][i+1]) + '};');
+      #l.append('{' + str(H[i][j]) + ', ' + str(H[i][j+1]) + ', ' + str(H[i+1][j+1]) + '};');
       s = ''.join(l) + '\n'
       fid.write(s);
  
