@@ -26,15 +26,25 @@ def read_gmsh(fname):
     
     # Dirichlet boundary edge indicies
     # find indicies for atributes
-    I0 = np.nonzero(np.array(list(rc.element_markers)) == 20);
-    bd = np.array(list(rc.elements))[I0[0]]
+    I0  = np.nonzero(np.array(list(rc.element_markers)) == 20);
+    bd0 = np.array(list(rc.elements))[I0[0]]
+    bd  = np.zeros((len(bd0),2));
+    for j in range(len(bd)):
+      bd[j][0] = bd0[j][0];
+      bd[j][1] = bd0[j][1];
     #print list(rc.elements)
     
     return (p, t, be, bd)
 
 
-def create_msh(fname):
+def create_msh_bgm(fname):
     l = "gmsh -2 square.geo -bgm " + fname + ".pos -o " + fname + ".msh"
+    print l
+    os.system(l)
+    return read_gmsh(fname+".msh")
+
+def create_msh(fname, h):
+    l = "gmsh -2 square.geo -clmax " + str(h) +" -o " + fname + ".msh"
     print l
     os.system(l)
     return read_gmsh(fname+".msh")

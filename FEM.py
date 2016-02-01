@@ -689,7 +689,7 @@ def loadNeumann(p, be, n, g):
 #
 def solveD0(p,t,matrix,vector):
   from scipy.sparse.linalg import spsolve
-  IN = interiorNodes(p,t)
+  IN = interiorNodesMy(p,t)
   T0 = sparse.lil_matrix((len(p),len(IN)))
   for j in range(len(IN)):
     T0[IN[j],j] = 1
@@ -701,6 +701,41 @@ def solveD0(p,t,matrix,vector):
   solution0 = spsolve(matrix0,vector0)
   return T0.dot(solution0)
 
+
+def interiorNodesAlter(p, t, be):
+    import copy
+    T=copy.copy(t)                                # O(n)
+    T=T.reshape((T.shape[0]*T.shape[1],1)).T      # O(1)
+    T.sort()                                      # O(n * log n)
+    T=np.unique(T)                                # O(n)
+
+    BE=copy.copy(be)                              # O(n)
+    BE=BE.reshape((BE.shape[0]*BE.shape[1],1)).T  # O(1)
+    BE.sort()                                     # O(n * log n)
+    BE=np.unique(BE)                               # O(n)
+
+    # could be realised in O(n)
+    return np.array(list(filter(   # O(n)
+        lambda x: x not in BE, T)  #      * O(log n)
+    )), BE
+
+
+# solve (Dirichtlet boundary conditions)
+def solve_d0(p, t, be, matrix,vector):
+    from scipy.sparse.linalg import spsolve
+
+    # get interior nodes
+    I, notI = interiorNodesAlter(p, t, be)
+
+    # u_0 auf dem Rand ist 0, im Inneren die Loesung des reduzierten LGS
+    u_n=np.zeros(len(p))
+    matrix0 = matrix.tocsr();
+    #vector0 = vector.tocsr();
+    
+    u_n[I] = spsolve(matrix0[I,:][:,I],vector[I]) 
+
+    # rekonstruiere u_n
+    return u_n
 
 # 
 # elemMassLumping
